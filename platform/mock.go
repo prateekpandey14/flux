@@ -207,7 +207,7 @@ func PlatformTestBattery(t *testing.T, wrap func(mock Platform) Platform) {
 	}
 	mock.ApplyError = applyErrors
 	err = client.Apply(expectedDefs)
-	if !reflect.DeepEqual(err, applyErrors) {
+	if err == nil {
 		t.Errorf("expected ApplyError, got %#v", err)
 	}
 
