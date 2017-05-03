@@ -2,10 +2,11 @@ package main //+integration
 import (
 	"github.com/gorilla/mux"
 
+	"testing"
+
 	"github.com/weaveworks/flux"
 	transport "github.com/weaveworks/flux/http"
 	"github.com/weaveworks/flux/jobs"
-	"testing"
 )
 
 func TestCheckReleaseCommand_CLIConversion(t *testing.T) {
