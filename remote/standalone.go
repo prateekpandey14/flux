@@ -188,6 +188,15 @@ func (p *removeablePlatform) SyncNotify() (err error) {
 	return p.remote.SyncNotify()
 }
 
+func (p *removeablePlatform) JobStatus(id job.ID) (_ job.Status, err error) {
+	defer func() {
+		if _, ok := err.(FatalError); ok {
+			p.closeWithError(err)
+		}
+	}()
+	return p.remote.JobStatus(id)
+}
+
 func (p *removeablePlatform) SyncStatus(ref string) (revs []string, err error) {
 	defer func() {
 		if _, ok := err.(FatalError); ok {
@@ -229,6 +238,10 @@ func (p disconnectedPlatform) UpdateManifests(update.Spec) (job.ID, error) {
 
 func (p disconnectedPlatform) SyncNotify() error {
 	return errNotSubscribed
+}
+
+func (p disconnectedPlatform) JobStatus(id job.ID) (job.Status, error) {
+	return job.Status{}, errNotSubscribed
 }
 
 func (p disconnectedPlatform) SyncStatus(string) ([]string, error) {

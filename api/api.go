@@ -17,6 +17,7 @@ type ClientService interface {
 	ListImages(flux.InstanceID, flux.ServiceSpec) ([]flux.ImageStatus, error)
 	UpdateImages(flux.InstanceID, flux.ReleaseSpec) (job.ID, error)
 	SyncNotify(flux.InstanceID) error
+	JobStatus(flux.InstanceID, job.ID) (job.Status, error)
 	SyncStatus(flux.InstanceID, string) ([]string, error)
 	UpdatePolicies(flux.InstanceID, policy.Updates) (job.ID, error)
 	History(flux.InstanceID, flux.ServiceSpec, time.Time, int64) ([]history.Entry, error)

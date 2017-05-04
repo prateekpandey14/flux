@@ -102,6 +102,16 @@ func (i *instrumentedPlatform) SyncNotify() (err error) {
 	return i.p.SyncNotify()
 }
 
+func (i *instrumentedPlatform) JobStatus(id job.ID) (_ job.Status, err error) {
+	defer func(begin time.Time) {
+		requestDuration.With(
+			fluxmetrics.LabelMethod, "JobStatus",
+			fluxmetrics.LabelSuccess, fmt.Sprint(err == nil),
+		).Observe(time.Since(begin).Seconds())
+	}(time.Now())
+	return i.p.JobStatus(id)
+}
+
 func (i *instrumentedPlatform) SyncStatus(cursor string) (_ []string, err error) {
 	defer func(begin time.Time) {
 		requestDuration.With(

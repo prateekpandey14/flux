@@ -31,6 +31,7 @@ const (
 	methodListServices    = ".Platform.ListServices"
 	methodListImages      = ".Platform.ListImages"
 	methodSyncNotify      = ".Platform.SyncNotify"
+	methodJobStatus       = ".Platform.JobStatus"
 	methodSyncStatus      = ".Platform.SyncStatus"
 	methodUpdateManifests = ".Platform.UpdateManifests"
 )
@@ -145,6 +146,15 @@ type SyncNotifyResponse struct {
 	ErrorResponse
 }
 
+// JobStatusResponse has status decomposed into it, so that we can transfer the
+// error as an ErrorResponse to avoid marshalling issues.
+type JobStatusResponse struct {
+	StatusResult interface{}
+	StatusError  ErrorResponse
+	StatusString job.StatusString
+	ErrorResponse
+}
+
 type SyncStatusResponse struct {
 	Result []string
 	ErrorResponse
@@ -253,6 +263,21 @@ func (r *natsPlatform) SyncNotify() error {
 		return err
 	}
 	return extractError(response.ErrorResponse)
+}
+
+func (r *natsPlatform) JobStatus(jobID job.ID) (job.Status, error) {
+	var response JobStatusResponse
+	if err := r.conn.Request(r.instance+methodJobStatus, jobID, &response, timeout); err != nil {
+		if err == nats.ErrTimeout {
+			err = remote.UnavailableError(err)
+		}
+		return job.Status{}, err
+	}
+	return job.Status{
+		Result:       response.StatusResult,
+		Error:        extractError(response.StatusError),
+		StatusString: response.StatusString,
+	}, extractError(response.ErrorResponse)
 }
 
 func (r *natsPlatform) SyncStatus(ref string) ([]string, error) {
@@ -373,6 +398,22 @@ func (n *NATS) Subscribe(instID flux.InstanceID, platform remote.Platform, done 
 		case strings.HasSuffix(request.Subject, methodSyncNotify):
 			err = platform.SyncNotify()
 			n.enc.Publish(request.Reply, SyncNotifyResponse{makeErrorResponse(err)})
+
+		case strings.HasSuffix(request.Subject, methodJobStatus):
+			var (
+				req job.ID
+				res job.Status
+			)
+			err = encoder.Decode(request.Subject, request.Data, &req)
+			if err == nil {
+				res, err = platform.JobStatus(req)
+			}
+			n.enc.Publish(request.Reply, JobStatusResponse{
+				StatusResult:  res.Result,
+				StatusError:   makeErrorResponse(res.Error),
+				StatusString:  res.StatusString,
+				ErrorResponse: makeErrorResponse(err),
+			})
 
 		case strings.HasSuffix(request.Subject, methodSyncStatus):
 			var (

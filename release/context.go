@@ -1,7 +1,6 @@
 package release
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"github.com/weaveworks/flux/git"
 	"github.com/weaveworks/flux/policy"
 	"github.com/weaveworks/flux/registry"
+	"github.com/weaveworks/flux/update"
 )
 
 const (
@@ -38,22 +38,24 @@ func NewReleaseContext(c cluster.Cluster, reg registry.Registry, repo git.Checko
 	}
 }
 
-func (rc *ReleaseContext) CommitAndPush(msg string, result flux.ReleaseResult) error {
-	noteBytes, err := json.Marshal(result)
-	if err != nil {
-		return err
-	}
-	return rc.Repo.CommitAndPush(msg, string(noteBytes))
+func (rc *ReleaseContext) CommitAndPush(msg string, spec *flux.ReleaseSpec) error {
+	return rc.Repo.CommitAndPush(msg, &git.Note{
+		JobID: "", // FIXME: get the job id here
+		Spec: update.Spec{
+			Type: update.Images,
+			Spec: *spec,
+		},
+	})
 }
 
-func (rc *ReleaseContext) PushChanges(updates []*ServiceUpdate, spec *flux.ReleaseSpec, result flux.ReleaseResult) error {
+func (rc *ReleaseContext) PushChanges(updates []*ServiceUpdate, spec *flux.ReleaseSpec) error {
 	err := writeUpdates(updates)
 	if err != nil {
 		return err
 	}
 
 	commitMsg := commitMessageFromReleaseSpec(spec)
-	return rc.CommitAndPush(commitMsg, result)
+	return rc.CommitAndPush(commitMsg, spec)
 }
 
 // Return the revision of HEAD as a commit hash.

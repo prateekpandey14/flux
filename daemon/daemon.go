@@ -2,7 +2,6 @@ package daemon
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"sort"
 	gosync "sync"
@@ -23,16 +22,19 @@ import (
 	"github.com/weaveworks/flux/update"
 )
 
+var ErrUnknownJob = fmt.Errorf("unkown job")
+
 // Combine these things to form Devasta^Wan implementation of
 // Platform.
 type Daemon struct {
-	V           string
-	Cluster     cluster.Cluster
-	Registry    registry.Registry
-	Repo        git.Repo
-	Checkout    git.Checkout
-	Jobs        *job.Queue
-	EventWriter history.EventWriter
+	V              string
+	Cluster        cluster.Cluster
+	Registry       registry.Registry
+	Repo           git.Repo
+	Checkout       git.Checkout
+	Jobs           *job.Queue
+	JobStatusCache *job.StatusCache
+	EventWriter    history.EventWriter
 	// bookkeeping
 	syncSoon     chan struct{}
 	initSyncSoon gosync.Once
@@ -113,7 +115,7 @@ func (d *Daemon) ListImages(spec flux.ServiceSpec) ([]flux.ImageStatus, error) {
 	return res, nil
 }
 
-type JobFunc func(working git.Checkout) error
+type JobFunc func(jobID job.ID, working git.Checkout) (interface{}, error)
 
 func (d *Daemon) queueJob(do JobFunc) job.ID {
 	// TODO record job as current upon Do'ing (or in the loop)
@@ -123,14 +125,23 @@ func (d *Daemon) queueJob(do JobFunc) job.ID {
 		// make a working clone so we don't mess with files we will be
 		// reading from elsewhere
 		Do: func() error {
+			d.JobStatusCache.SetStatus(id, job.Status{StatusString: job.StatusRunning})
 			working, err := d.Checkout.WorkingClone()
 			if err != nil {
+				d.JobStatusCache.SetStatus(id, job.Status{StatusString: job.StatusFailed, Error: err})
 				return err
 			}
 			defer working.Clean()
-			return do(working)
+			result, err := do(id, working)
+			if err != nil {
+				d.JobStatusCache.SetStatus(id, job.Status{StatusString: job.StatusFailed, Error: err})
+				return err
+			}
+			d.JobStatusCache.SetStatus(id, job.Status{StatusString: job.StatusSucceeded, Result: result})
+			return nil
 		},
 	})
+	d.JobStatusCache.SetStatus(id, job.Status{StatusString: job.StatusQueued})
 	println("enqueued job " + id)
 	return id
 }
@@ -139,13 +150,12 @@ func (d *Daemon) queueJob(do JobFunc) job.ID {
 func (d *Daemon) UpdateManifests(spec update.Spec) (job.ID, error) {
 	switch s := spec.Spec.(type) {
 	case flux.ReleaseSpec:
-		return d.queueJob(func(working git.Checkout) error {
+		return d.queueJob(func(jobID job.ID, working git.Checkout) (interface{}, error) {
 			rc := release.NewReleaseContext(d.Cluster, d.Registry, working)
-			_, err := release.Release(rc, s)
-			return err
+			return release.Release(rc, s)
 		}), nil
 	case policy.Updates:
-		return d.queueJob(func(working git.Checkout) error {
+		return d.queueJob(func(jobID job.ID, working git.Checkout) (interface{}, error) {
 			started := time.Now().UTC()
 			// For each update
 			var serviceIDs []flux.ServiceID
@@ -156,32 +166,29 @@ func (d *Daemon) UpdateManifests(spec update.Spec) (job.ID, error) {
 					return d.Cluster.UpdatePolicies(def, update)
 				})
 				if err != nil {
-					return err
+					return nil, err
 				}
 			}
 
-			noteBytes, err := json.Marshal(s)
-			if err != nil {
-				return err
-			}
-			if err := working.CommitAndPush(policyCommitMessage(s, started), string(noteBytes)); err != nil {
-				return err
+			if err := working.CommitAndPush(policyCommitMessage(s, started), &git.Note{JobID: jobID, Spec: spec}); err != nil {
+				return nil, err
 			}
 
 			revision, err := working.HeadRevision()
 			if err != nil {
-				return err
+				return nil, err
 			}
-			return d.LogEvent(history.Event{
+			metadata := history.CommitEventMetadata{
+				Revision: revision,
+				Spec:     spec,
+			}
+			return metadata, d.LogEvent(history.Event{
 				ServiceIDs: serviceIDs,
 				Type:       history.EventCommit,
 				StartedAt:  started,
 				EndedAt:    started,
 				LogLevel:   history.LogLevelInfo,
-				Metadata: history.CommitEventMetadata{
-					Revision: revision,
-					Spec:     spec,
-				},
+				Metadata:   metadata,
 			})
 		}), nil
 	default:
@@ -197,6 +204,36 @@ func (d *Daemon) UpdateManifests(spec update.Spec) (job.ID, error) {
 func (d *Daemon) SyncNotify() error {
 	d.askForSync()
 	return nil
+}
+
+// Ask the daemon how far it's got committing things; in particular, is the job
+// queued? running? committed? If it is done, the commit ref is returned.
+func (d *Daemon) JobStatus(jobID job.ID) (job.Status, error) {
+	// Is the job queued, running, or recently finished?
+	status, ok := d.JobStatusCache.Status(jobID)
+	if ok {
+		return status, nil
+	}
+
+	// is there a commit for this job?
+	// Look through the commits for a note referencing this job. What a hack.
+	// But, it means that even if fluxd restarts, we will remember jobs which
+	// have pushed a commit.
+	if err := d.Checkout.Pull(); err != nil {
+		return job.Status{}, errors.Wrap(err, "updating repo for status")
+	}
+	refs, err := d.Checkout.RevisionsBefore("HEAD")
+	if err != nil {
+		return job.Status{}, errors.Wrap(err, "checking revisions for status")
+	}
+	for _, ref := range refs {
+		note, _ := d.Checkout.GetNote(ref)
+		if note != nil && note.JobID == jobID {
+			return job.Status{StatusString: job.StatusSucceeded, Result: ref}, nil
+		}
+	}
+
+	return job.Status{}, ErrUnknownJob
 }
 
 // Ask the daemon how far it's got applying things; in particular, is it

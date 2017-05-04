@@ -22,7 +22,7 @@ type ServiceUpdate struct {
 	Updates       []flux.ContainerUpdate
 }
 
-func Release(rc *ReleaseContext, spec flux.ReleaseSpec) (results flux.ReleaseResult, err error) {
+func Release(rc *ReleaseContext, spec flux.ReleaseSpec) (commitRef string, results flux.ReleaseResult, err error) {
 	started := time.Now()
 	defer func(start time.Time) {
 		releaseDuration.With(
@@ -39,7 +39,7 @@ func Release(rc *ReleaseContext, spec flux.ReleaseSpec) (results flux.ReleaseRes
 	// ALSO: clean up in the result of failure, afterwards
 
 	// From here in, we collect the results of the calculations.
-	results = flux.ReleaseResult{}
+	results := flux.ReleaseResult{}
 
 	// Figure out the services involved.
 	timer = NewStageTimer("select_services")
@@ -47,7 +47,7 @@ func Release(rc *ReleaseContext, spec flux.ReleaseSpec) (results flux.ReleaseRes
 	updates, err = selectServices(rc, &spec, results)
 	timer.ObserveDuration()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// Look up images, and calculate updates, if we've been asked to
@@ -57,19 +57,19 @@ func Release(rc *ReleaseContext, spec flux.ReleaseSpec) (results flux.ReleaseRes
 		updates, err = calculateImageUpdates(rc, updates, &spec, results)
 		timer.ObserveDuration()
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 	}
 
 	// At this point we may have filtered the updates we can do down
 	// to nothing. Check and exit early if so.
 	if len(updates) == 0 {
-		return results, nil
+		return "", results, nil
 	}
 
 	// If it's a dry run, we're done.
 	if spec.Kind == flux.ReleaseKindPlan {
-		return results, nil
+		return "", results, nil
 	}
 
 	if spec.ImageSpec != flux.ImageSpecNone {
@@ -77,11 +77,12 @@ func Release(rc *ReleaseContext, spec flux.ReleaseSpec) (results flux.ReleaseRes
 		err = rc.PushChanges(updates, &spec, results)
 		timer.ObserveDuration()
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 	}
 
-	return results, err
+	revision, err := rc.HeadRevision
+	return revision, results, err
 }
 
 // Take the spec given in the job, and figure out which services are

@@ -45,6 +45,8 @@ type PlatformV6 interface {
 	SyncNotify() error
 	// Ask the daemon where it's up to with syncing
 	SyncStatus(string) ([]string, error)
+	// Ask the daemon where it's up to with job processing
+	JobStatus(job.ID) (job.Status, error)
 }
 
 // Platform is the SPI for the daemon; i.e., it's all the things we

@@ -73,6 +73,12 @@ func (p *RPCServer) SyncNotify(_ struct{}, _ *struct{}) error {
 	return p.p.SyncNotify()
 }
 
+func (p *RPCServer) JobStatus(jobID job.ID, resp *job.Status) error {
+	v, err := p.p.JobStatus(jobID)
+	*resp = v
+	return err
+}
+
 func (p *RPCServer) SyncStatus(cursor string, resp *[]string) error {
 	v, err := p.p.SyncStatus(cursor)
 	*resp = v

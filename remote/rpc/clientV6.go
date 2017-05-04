@@ -70,6 +70,15 @@ func (p *RPCClientV6) SyncNotify() error {
 	return err
 }
 
+func (p *RPCClientV6) JobStatus(jobID job.ID) (job.Status, error) {
+	var result job.Status
+	err := p.client.Call("RPCServer.JobStatus", jobID, &result)
+	if _, ok := err.(rpc.ServerError); !ok && err != nil {
+		return job.Status{}, remote.FatalError{err}
+	}
+	return result, err
+}
+
 func (p *RPCClientV6) SyncStatus(ref string) ([]string, error) {
 	var result []string
 	err := p.client.Call("RPCServer.SyncStatus", ref, &result)

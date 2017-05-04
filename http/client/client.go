@@ -75,6 +75,12 @@ func (c *Client) SyncNotify(_ flux.InstanceID) error {
 	return nil
 }
 
+func (c *Client) JobStatus(_ flux.InstanceID, jobID job.ID) (job.Status, error) {
+	var res job.Status
+	err := c.get(&res, "JobStatus", "id", string(jobID))
+	return res, err
+}
+
 func (c *Client) SyncStatus(_ flux.InstanceID, ref string) ([]string, error) {
 	var res []string
 	err := c.get(&res, "SyncStatus", "ref", ref)

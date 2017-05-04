@@ -143,12 +143,5 @@ func (opts *serviceReleaseOpts) RunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Fprintln(cmd.OutOrStdout(), "Job ID:", jobID)
-	return nil
-	// // This is a bit funny, but works.
-	// return (&serviceSyncStatusOpts{
-	// 	serviceOpts: opts.serviceOpts,
-	// 	revID:       results.Revision,
-	// 	serviceReleaseOutputOpts: opts.serviceReleaseOutputOpts,
-	// }).RunE(cmd, nil)
+	return await(cmd.OutOrStdout(), opts.API, jobID, true)
 }

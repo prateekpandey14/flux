@@ -13,6 +13,7 @@ import (
 // These are all the types of events.
 const (
 	EventCommit     = "commit"
+	EventSync       = "sync"
 	EventRelease    = "release"
 	EventAutomate   = "automate"
 	EventDeautomate = "deautomate"
@@ -130,6 +131,13 @@ type CommitEventMetadata struct {
 	Revision string `json:"revision"`
 
 	Spec update.Spec `json:"spec"`
+}
+
+func (c CommitEventMetadata) ShortRevision() string {
+	if len(c.Revision) <= 7 {
+		return c.Revision
+	}
+	return c.Revision[:7]
 }
 
 // ReleaseEventMetadata is the metadata for when service(s) are released

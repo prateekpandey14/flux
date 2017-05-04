@@ -118,6 +118,15 @@ func (s *Server) SyncNotify(instID flux.InstanceID) (err error) {
 	return inst.Platform.SyncNotify()
 }
 
+func (s *Server) JobStatus(instID flux.InstanceID, jobID job.ID) (res job.Status, err error) {
+	inst, err := s.instancer.Get(instID)
+	if err != nil {
+		return job.Status{}, errors.Wrapf(err, "getting instance "+string(instID))
+	}
+
+	return inst.Platform.JobStatus(jobID)
+}
+
 func (s *Server) SyncStatus(instID flux.InstanceID, ref string) (res []string, err error) {
 	inst, err := s.instancer.Get(instID)
 	if err != nil {

@@ -28,6 +28,7 @@ import (
 	"github.com/weaveworks/flux/http/httperror"
 	"github.com/weaveworks/flux/http/websocket"
 	"github.com/weaveworks/flux/integrations/github"
+	"github.com/weaveworks/flux/job"
 	"github.com/weaveworks/flux/policy"
 	"github.com/weaveworks/flux/remote"
 	"github.com/weaveworks/flux/remote/rpc"
@@ -54,6 +55,7 @@ func NewHandler(s api.FluxService, r *mux.Router, logger log.Logger) http.Handle
 		"IsConnected":            handle.IsConnected,
 		"Export":                 handle.Export,
 		"SyncNotify":             handle.SyncNotify,
+		"JobStatus":              handle.JobStatus,
 		"SyncStatus":             handle.SyncStatus,
 	} {
 		handler := logging(handlerMethod, log.NewContext(logger).With("method", method))
@@ -166,6 +168,17 @@ func (s HTTPService) SyncNotify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
+}
+
+func (s HTTPService) JobStatus(w http.ResponseWriter, r *http.Request) {
+	inst := getInstanceID(r)
+	id := job.ID(mux.Vars(r)["id"])
+	res, err := s.service.JobStatus(inst, id)
+	if err != nil {
+		transport.ErrorResponse(w, r, err)
+		return
+	}
+	transport.JSONResponse(w, r, res)
 }
 
 func (s HTTPService) SyncStatus(w http.ResponseWriter, r *http.Request) {
