@@ -85,10 +85,10 @@ func (d *Daemon) ListServices(namespace string) ([]flux.ServiceStatus, error) {
 }
 
 // List the images available for set of services
-func (d *Daemon) ListImages(spec flux.ServiceSpec) ([]flux.ImageStatus, error) {
+func (d *Daemon) ListImages(spec update.ServiceSpec) ([]flux.ImageStatus, error) {
 	var services []cluster.Service
 	var err error
-	if spec == flux.ServiceSpecAll {
+	if spec == update.ServiceSpecAll {
 		services, err = d.Cluster.AllServices("")
 	} else {
 		id, err := spec.AsID()
@@ -149,10 +149,15 @@ func (d *Daemon) queueJob(do JobFunc) job.ID {
 // Apply the desired changes to the config files
 func (d *Daemon) UpdateManifests(spec update.Spec) (job.ID, error) {
 	switch s := spec.Spec.(type) {
-	case flux.ReleaseSpec:
+	case update.ReleaseSpec:
 		return d.queueJob(func(jobID job.ID, working git.Checkout) (interface{}, error) {
 			rc := release.NewReleaseContext(d.Cluster, d.Registry, working)
-			return release.Release(rc, s)
+			revision, result, err := release.Release(rc, s)
+			return history.CommitEventMetadata{
+				Revision: revision,
+				Spec:     spec,
+				Result:   result,
+			}, err
 		}), nil
 	case policy.Updates:
 		return d.queueJob(func(jobID job.ID, working git.Checkout) (interface{}, error) {
@@ -181,6 +186,7 @@ func (d *Daemon) UpdateManifests(spec update.Spec) (job.ID, error) {
 			metadata := history.CommitEventMetadata{
 				Revision: revision,
 				Spec:     spec,
+				// FIXME: include the service results here, so they get printed.
 			}
 			return metadata, d.LogEvent(history.Event{
 				ServiceIDs: serviceIDs,
@@ -254,7 +260,7 @@ func (d *Daemon) SyncStatus(commitRef string) ([]string, error) {
 // `logEvent` expects the result of applying updates, and records an event in
 // the history about the release taking place. It returns the origin error if
 // that was non-nil, otherwise the result of the attempted logging.
-func (d *Daemon) logRelease(executeErr error, release flux.Release) error {
+func (d *Daemon) logRelease(executeErr error, release update.Release) error {
 	errorMessage := ""
 	logLevel := history.LogLevelInfo
 	if executeErr != nil {

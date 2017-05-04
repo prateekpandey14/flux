@@ -1,5 +1,23 @@
 package update
 
+import (
+	"fmt"
+	"sort"
+
+	"github.com/weaveworks/flux"
+)
+
+type ServiceUpdateStatus string
+
+const (
+	ReleaseStatusPending ServiceUpdateStatus = "pending"
+	ReleaseStatusSuccess ServiceUpdateStatus = "success"
+	ReleaseStatusFailed  ServiceUpdateStatus = "failed"
+	ReleaseStatusSkipped ServiceUpdateStatus = "skipped"
+	ReleaseStatusIgnored ServiceUpdateStatus = "ignored"
+	ReleaseStatusUnknown ServiceUpdateStatus = "unknown"
+)
+
 type Result map[flux.ServiceID]ServiceResult
 
 func (r Result) ServiceIDs() []string {
@@ -12,7 +30,7 @@ func (r Result) ServiceIDs() []string {
 }
 
 func (r Result) ImageIDs() []string {
-	images := map[ImageID]struct{}{}
+	images := map[flux.ImageID]struct{}{}
 	for _, serviceResult := range r {
 		for _, containerResult := range serviceResult.PerContainer {
 			images[containerResult.Target] = struct{}{}
@@ -49,6 +67,6 @@ func (fr ServiceResult) Msg(id flux.ServiceID) string {
 
 type ContainerUpdate struct {
 	Container string
-	Current   ImageID
-	Target    ImageID
+	Current   flux.ImageID
+	Target    flux.ImageID
 }

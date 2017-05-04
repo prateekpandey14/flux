@@ -57,7 +57,7 @@ func (p *RPCServer) ListServices(namespace string, resp *[]flux.ServiceStatus) e
 	return err
 }
 
-func (p *RPCServer) ListImages(spec flux.ServiceSpec, resp *[]flux.ImageStatus) error {
+func (p *RPCServer) ListImages(spec update.ServiceSpec, resp *[]flux.ImageStatus) error {
 	v, err := p.p.ListImages(spec)
 	*resp = v
 	return err

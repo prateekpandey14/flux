@@ -50,7 +50,7 @@ func (p *ErrorLoggingPlatform) ListServices(maybeNamespace string) (_ []flux.Ser
 	return p.Platform.ListServices(maybeNamespace)
 }
 
-func (p *ErrorLoggingPlatform) ListImages(spec flux.ServiceSpec) (_ []flux.ImageStatus, err error) {
+func (p *ErrorLoggingPlatform) ListImages(spec update.ServiceSpec) (_ []flux.ImageStatus, err error) {
 	defer func() {
 		if err != nil {
 			p.Logger.Log("method", "ListImages", "error", err)

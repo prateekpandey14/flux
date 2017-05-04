@@ -232,7 +232,7 @@ func (r *natsPlatform) ListServices(namespace string) ([]flux.ServiceStatus, err
 	return response.Result, extractError(response.ErrorResponse)
 }
 
-func (r *natsPlatform) ListImages(spec flux.ServiceSpec) ([]flux.ImageStatus, error) {
+func (r *natsPlatform) ListImages(spec update.ServiceSpec) ([]flux.ImageStatus, error) {
 	var response ListImagesResponse
 	if err := r.conn.Request(r.instance+methodListImages, spec, &response, timeout); err != nil {
 		if err == nats.ErrTimeout {
@@ -375,7 +375,7 @@ func (n *NATS) Subscribe(instID flux.InstanceID, platform remote.Platform, done 
 
 		case strings.HasSuffix(request.Subject, methodListImages):
 			var (
-				req flux.ServiceSpec
+				req update.ServiceSpec
 				res []flux.ImageStatus
 			)
 			err = encoder.Decode(request.Subject, request.Data, &req)

@@ -32,6 +32,7 @@ import (
 	"github.com/weaveworks/flux/policy"
 	"github.com/weaveworks/flux/remote"
 	"github.com/weaveworks/flux/remote/rpc"
+	"github.com/weaveworks/flux/update"
 )
 
 func NewHandler(s api.FluxService, r *mux.Router, logger log.Logger) http.Handler {
@@ -86,7 +87,7 @@ func (s HTTPService) ListServices(w http.ResponseWriter, r *http.Request) {
 func (s HTTPService) ListImages(w http.ResponseWriter, r *http.Request) {
 	inst := getInstanceID(r)
 	service := mux.Vars(r)["service"]
-	spec, err := flux.ParseServiceSpec(service)
+	spec, err := update.ParseServiceSpec(service)
 	if err != nil {
 		transport.WriteError(w, r, http.StatusBadRequest, errors.Wrapf(err, "parsing service spec %q", service))
 		return
@@ -112,21 +113,21 @@ func (s HTTPService) UpdateImages(w http.ResponseWriter, r *http.Request) {
 		transport.WriteError(w, r, http.StatusBadRequest, errors.Wrapf(err, "parsing form"))
 		return
 	}
-	var serviceSpecs []flux.ServiceSpec
+	var serviceSpecs []update.ServiceSpec
 	for _, service := range r.Form["service"] {
-		serviceSpec, err := flux.ParseServiceSpec(service)
+		serviceSpec, err := update.ParseServiceSpec(service)
 		if err != nil {
 			transport.WriteError(w, r, http.StatusBadRequest, errors.Wrapf(err, "parsing service spec %q", service))
 			return
 		}
 		serviceSpecs = append(serviceSpecs, serviceSpec)
 	}
-	imageSpec, err := flux.ParseImageSpec(image)
+	imageSpec, err := update.ParseImageSpec(image)
 	if err != nil {
 		transport.WriteError(w, r, http.StatusBadRequest, errors.Wrapf(err, "parsing image spec %q", image))
 		return
 	}
-	releaseKind, err := flux.ParseReleaseKind(kind)
+	releaseKind, err := update.ParseReleaseKind(kind)
 	if err != nil {
 		transport.WriteError(w, r, http.StatusBadRequest, errors.Wrapf(err, "parsing release kind %q", kind))
 		return
@@ -142,12 +143,12 @@ func (s HTTPService) UpdateImages(w http.ResponseWriter, r *http.Request) {
 		excludes = append(excludes, s)
 	}
 
-	jobID, err := s.service.UpdateImages(inst, flux.ReleaseSpec{
+	jobID, err := s.service.UpdateImages(inst, update.ReleaseSpec{
 		ServiceSpecs: serviceSpecs,
 		ImageSpec:    imageSpec,
 		Kind:         releaseKind,
 		Excludes:     excludes,
-		Cause: flux.ReleaseCause{
+		Cause: update.ReleaseCause{
 			User:    r.FormValue("user"),
 			Message: r.FormValue("message"),
 		},
@@ -231,7 +232,7 @@ func (s HTTPService) LogEvent(w http.ResponseWriter, r *http.Request) {
 func (s HTTPService) History(w http.ResponseWriter, r *http.Request) {
 	inst := getInstanceID(r)
 	service := mux.Vars(r)["service"]
-	spec, err := flux.ParseServiceSpec(service)
+	spec, err := update.ParseServiceSpec(service)
 	if err != nil {
 		transport.WriteError(w, r, http.StatusBadRequest, errors.Wrapf(err, "parsing service spec %q", spec))
 		return

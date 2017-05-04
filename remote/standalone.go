@@ -161,7 +161,7 @@ func (p *removeablePlatform) ListServices(namespace string) (_ []flux.ServiceSta
 	return p.remote.ListServices(namespace)
 }
 
-func (p *removeablePlatform) ListImages(spec flux.ServiceSpec) (_ []flux.ImageStatus, err error) {
+func (p *removeablePlatform) ListImages(spec update.ServiceSpec) (_ []flux.ImageStatus, err error) {
 	defer func() {
 		if _, ok := err.(FatalError); ok {
 			p.closeWithError(err)
@@ -227,7 +227,7 @@ func (p disconnectedPlatform) ListServices(namespace string) ([]flux.ServiceStat
 	return nil, errNotSubscribed
 }
 
-func (p disconnectedPlatform) ListImages(flux.ServiceSpec) ([]flux.ImageStatus, error) {
+func (p disconnectedPlatform) ListImages(update.ServiceSpec) ([]flux.ImageStatus, error) {
 	return nil, errNotSubscribed
 }
 

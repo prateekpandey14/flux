@@ -6,6 +6,7 @@ import (
 )
 
 type Note struct {
-	JobID job.ID      `json:"JobID"`
-	Spec  update.Spec `json:"Spec"`
+	JobID  job.ID        `json:"jobID"`
+	Spec   update.Spec   `json:"spec"`
+	Result update.Result `json:"result"`
 }

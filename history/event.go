@@ -84,10 +84,10 @@ func (e Event) String() string {
 		}
 		for _, spec := range metadata.Release.Spec.ServiceSpecs {
 			switch spec {
-			case flux.ServiceSpecAll:
+			case update.ServiceSpecAll:
 				strServiceIDs = []string{"all services"}
 				break
-			case flux.ServiceSpecAutomated:
+			case update.ServiceSpecAutomated:
 				strServiceIDs = []string{"automated services"}
 				break
 			}
@@ -128,9 +128,9 @@ func (e Event) String() string {
 
 // CommitEventMetadata is the metadata for when new git commits are created
 type CommitEventMetadata struct {
-	Revision string `json:"revision"`
-
-	Spec update.Spec `json:"spec"`
+	Revision string        `json:"revision,omitempty"`
+	Spec     update.Spec   `json:"spec"`
+	Result   update.Result `json:"result"`
 }
 
 func (c CommitEventMetadata) ShortRevision() string {
@@ -143,7 +143,7 @@ func (c CommitEventMetadata) ShortRevision() string {
 // ReleaseEventMetadata is the metadata for when service(s) are released
 type ReleaseEventMetadata struct {
 	// Release points to this release
-	Release flux.Release `json:"release"`
+	Release update.Release `json:"release"`
 	// Message of the error if there was one.
 	Error string `json:"error,omitempty"`
 }

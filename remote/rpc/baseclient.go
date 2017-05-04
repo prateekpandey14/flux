@@ -29,7 +29,7 @@ func (bc baseClient) ListServices(string) ([]flux.ServiceStatus, error) {
 	return nil, remote.UpgradeNeededError(errors.New("ListServices method not implemented"))
 }
 
-func (bc baseClient) ListImages(flux.ServiceSpec) ([]flux.ImageStatus, error) {
+func (bc baseClient) ListImages(update.ServiceSpec) ([]flux.ImageStatus, error) {
 	return nil, remote.UpgradeNeededError(errors.New("ListImages method not implemented"))
 }
 

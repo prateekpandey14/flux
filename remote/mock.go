@@ -7,6 +7,7 @@ import (
 	// "testing"
 
 	"github.com/weaveworks/flux"
+	"github.com/weaveworks/flux/update"
 )
 
 type MockPlatform struct {
@@ -24,7 +25,7 @@ type MockPlatform struct {
 	ListImagesAnswer []flux.ImageStatus
 	ListImagesError  error
 
-	UpdateImagesAnswer flux.ReleaseResult
+	UpdateImagesAnswer update.Result
 	UpdateImagesError  error
 
 	SyncClusterError error
@@ -49,11 +50,11 @@ func (p *MockPlatform) ListServices(ns string) ([]flux.ServiceStatus, error) {
 	return p.ListServicesAnswer, p.ListServicesError
 }
 
-func (p *MockPlatform) ListImages(flux.ServiceSpec) ([]flux.ImageStatus, error) {
+func (p *MockPlatform) ListImages(update.ServiceSpec) ([]flux.ImageStatus, error) {
 	return p.ListImagesAnswer, p.ListImagesError
 }
 
-func (p *MockPlatform) UpdateImages(flux.ReleaseSpec) (flux.ReleaseResult, error) {
+func (p *MockPlatform) UpdateImages(update.ReleaseSpec) (update.Result, error) {
 	return p.UpdateImagesAnswer, p.UpdateImagesError
 }
 

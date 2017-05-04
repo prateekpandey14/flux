@@ -43,7 +43,7 @@ func (p *RPCClientV6) ListServices(namespace string) ([]flux.ServiceStatus, erro
 	return services, err
 }
 
-func (p *RPCClientV6) ListImages(spec flux.ServiceSpec) ([]flux.ImageStatus, error) {
+func (p *RPCClientV6) ListImages(spec update.ServiceSpec) ([]flux.ImageStatus, error) {
 	var images []flux.ImageStatus
 	err := p.client.Call("RPCServer.ListImages", spec, &images)
 	if _, ok := err.(rpc.ServerError); !ok && err != nil {
